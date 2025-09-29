@@ -1,0 +1,172 @@
+-- TABELAS PRINCIPAIS
+
+-- Tabela filial (pai)
+CREATE TABLE t_mtu_filial (
+  id_filial UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_filial VARCHAR(50) NOT NULL,
+  nr_cnpj VARCHAR(18),
+  ts_abertura DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  cd_pais CHAR(2)
+);
+
+-- Endereço
+CREATE TABLE t_mtu_endereco (
+  id_endereco UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_logradouro VARCHAR(50) NOT NULL,
+  nm_bairro VARCHAR(30) NOT NULL,
+  nm_cidade VARCHAR(30) NOT NULL,
+  nm_uf CHAR(2) NOT NULL,
+  nr_cep VARCHAR(8) NOT NULL,
+  ds_complemento VARCHAR(40),
+  tp_endereco VARCHAR(15),
+  id_filial UNIQUEIDENTIFIER,
+  CONSTRAINT fk_endereco_filial FOREIGN KEY (id_filial) REFERENCES t_mtu_filial (id_filial)
+);
+
+-- Telefone
+CREATE TABLE t_mtu_telefone (
+  id_telefone UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nr_ddd CHAR(3) NOT NULL,
+  nr_telefone VARCHAR(15) NOT NULL,
+  tp_telefone VARCHAR(15) NOT NULL,
+  fl_status CHAR(1) NOT NULL,
+  id_filial UNIQUEIDENTIFIER,
+  CONSTRAINT fk_telefone_filial FOREIGN KEY (id_filial) REFERENCES t_mtu_filial (id_filial) ON DELETE CASCADE
+);
+
+-- Pátio
+CREATE TABLE t_mtu_patio (
+  id_patio UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_patio VARCHAR(50) NOT NULL,
+  ds_patio VARCHAR(100),
+  ts_created DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  ts_update DATETIMEOFFSET,
+  fl_aberto CHAR(1),
+  id_filial UNIQUEIDENTIFIER,
+  CONSTRAINT fk_patio_filial FOREIGN KEY (id_filial) REFERENCES t_mtu_filial (id_filial)
+);
+
+-- Câmera
+CREATE TABLE t_mtu_camera (
+  id_camera UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  ds_local VARCHAR(100) NOT NULL,
+  nm_camera VARCHAR(50) NOT NULL,
+  vl_latitude NUMERIC(9,6) NOT NULL,
+  vl_longitude NUMERIC(9,6) NOT NULL,
+  dt_registro DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  id_patio UNIQUEIDENTIFIER,
+  CONSTRAINT fk_camera_patio FOREIGN KEY (id_patio) REFERENCES t_mtu_patio (id_patio)
+);
+
+-- Operador
+CREATE TABLE t_mtu_operador (
+  id_operador UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_operador VARCHAR(50) NOT NULL,
+  nr_cpf VARCHAR(14),
+  nr_rg VARCHAR(20),
+  dt_inscricao DATETIMEOFFSET
+);
+
+-- Moto (COM COLUNAS status E setor JÁ INCLUÍDAS)
+CREATE TABLE t_mtu_moto (
+  id_moto UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_modelo VARCHAR(50) NOT NULL,
+  nr_placa VARCHAR(10) NOT NULL,
+  nr_chassi VARCHAR(25),
+  fl_status CHAR(1) NOT NULL,
+  id_operador UNIQUEIDENTIFIER,
+  id_patio UNIQUEIDENTIFIER,
+  status VARCHAR(20) NOT NULL DEFAULT 'LIVRE',
+  setor VARCHAR(10) NOT NULL DEFAULT 'A',
+  CONSTRAINT fk_moto_operador FOREIGN KEY (id_operador) REFERENCES t_mtu_operador (id_operador),
+  CONSTRAINT fk_moto_patio FOREIGN KEY (id_patio) REFERENCES t_mtu_patio (id_patio)
+);
+
+-- Sensor
+CREATE TABLE t_mtu_sensor (
+  id_sensor UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_modelo VARCHAR(50) NOT NULL,
+  tp_sensor VARCHAR(20) NOT NULL,
+  nm_fabricante VARCHAR(50),
+  vs_firmware VARCHAR(30),
+  dt_instalacao DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  dt_calibracao DATETIMEOFFSET,
+  id_moto UNIQUEIDENTIFIER,
+  CONSTRAINT fk_sensor_moto FOREIGN KEY (id_moto) REFERENCES t_mtu_moto (id_moto) ON DELETE CASCADE
+);
+
+-- Localização de sensor (telemetria) - CORRIGIDO SEM CASCADE DUPLO
+CREATE TABLE t_mtu_sensor_localizacao (
+  id_sensor_loc UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  dt_registro DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  vl_latitude NUMERIC(9,6) NOT NULL,
+  vl_longitude NUMERIC(9,6) NOT NULL,
+  nv_bateria INT,
+  st_sensor CHAR(1),
+  id_sensor UNIQUEIDENTIFIER,
+  id_moto UNIQUEIDENTIFIER,
+  CONSTRAINT fk_sloc_sensor FOREIGN KEY (id_sensor) REFERENCES t_mtu_sensor (id_sensor) ON DELETE CASCADE,
+  CONSTRAINT fk_sloc_moto FOREIGN KEY (id_moto) REFERENCES t_mtu_moto (id_moto)
+);
+
+-- Evento no pátio
+CREATE TABLE t_mtu_patio_evento (
+  id_patio_evento UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  nm_zona VARCHAR(50),
+  vl_latitude NUMERIC(9,6),
+  vl_longitude NUMERIC(9,6),
+  tp_evento VARCHAR(20),
+  ts_evento DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  id_patio UNIQUEIDENTIFIER,
+  id_moto UNIQUEIDENTIFIER,
+  id_camera UNIQUEIDENTIFIER,
+  id_sensor UNIQUEIDENTIFIER,
+  CONSTRAINT fk_patioevento_patio FOREIGN KEY (id_patio) REFERENCES t_mtu_patio (id_patio),
+  CONSTRAINT fk_patioevento_moto FOREIGN KEY (id_moto) REFERENCES t_mtu_moto (id_moto),
+  CONSTRAINT fk_patioevento_camera FOREIGN KEY (id_camera) REFERENCES t_mtu_camera (id_camera),
+  CONSTRAINT fk_patioevento_sensor FOREIGN KEY (id_sensor) REFERENCES t_mtu_sensor (id_sensor)
+);
+
+-- Status de manutenção (catálogo)
+CREATE TABLE t_mtu_status_manutencao (
+  id_status UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  ds_status VARCHAR(100) NOT NULL
+);
+
+-- Manutenção
+CREATE TABLE t_mtu_manutencao (
+  id_manutencao UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  tp_servico VARCHAR(50),
+  ds_servico VARCHAR(255),
+  dt_entrada DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+  dt_saida DATETIMEOFFSET,
+  id_sensor UNIQUEIDENTIFIER,
+  id_moto UNIQUEIDENTIFIER,
+  id_status UNIQUEIDENTIFIER,
+  CONSTRAINT fk_manutencao_sensor FOREIGN KEY (id_sensor) REFERENCES t_mtu_sensor (id_sensor),
+  CONSTRAINT fk_manutencao_moto FOREIGN KEY (id_moto) REFERENCES t_mtu_moto (id_moto),
+  CONSTRAINT fk_manutencao_status FOREIGN KEY (id_status) REFERENCES t_mtu_status_manutencao (id_status)
+);
+
+-- Tabela de usuários
+CREATE TABLE t_mtu_user(
+    id_user BIGINT IDENTITY(1,1) PRIMARY KEY,
+    nr_email VARCHAR(255) NOT NULL,
+    pw_senha VARCHAR(255) NOT NULL,
+    vl_role VARCHAR(10) CHECK (vl_role IN ('ADMIN', 'USER'))
+);
+
+-- ALTERAÇÕES E ATUALIZAÇÕES (execute após criar as tabelas)
+
+-- 1. Alterar tipo da coluna cd_pais para VARCHAR(3)
+ALTER TABLE t_mtu_filial ALTER COLUMN cd_pais VARCHAR(3);
+
+-- 2. Atualizar os valores para códigos de país (se houver dados)
+-- NOTA: Estas updates só são necessárias se você já tinha dados na tabela
+-- UPDATE t_mtu_filial SET cd_pais = 'BR' WHERE cd_pais = '1';
+-- UPDATE t_mtu_filial SET cd_pais = 'MX' WHERE cd_pais = '2';
+
+-- 3. Adicionar constraint para valores válidos
+ALTER TABLE t_mtu_filial 
+ADD CONSTRAINT chk_cd_pais_valido 
+CHECK (cd_pais IN ('BR', 'MX'));
