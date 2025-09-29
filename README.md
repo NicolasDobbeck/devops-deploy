@@ -1,6 +1,7 @@
 # Deploy do Projeto na Azure
 
 ### 1. Setup Inicial do Projeto (Git Clone)
+OBS: O código fonte está no repositório abaixo↓
 
 Para começar, clone o projeto e navegue para o branch **Nicolas**:
 
